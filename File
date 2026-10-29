@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NontonYuk</title>
+<style>
+:root {
+  --bg:#141414;
+  --fg:#f2f2f2;
+  --mut:#a3a3a3;
+  --red:#e50914;
+  --card:#222;
+  color-scheme:dark;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body {
+  background:var(--bg);
+  color:var(--fg);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+header {
+  position:sticky;
+  top:0;
+  z-index:5;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:12px 4%;
+  background:#141414ee;
+}
+.logo {
+  color:var(--red);
+  font-weight:800;
+  font-size:20px;
+  letter-spacing:1px;
+  white-space:nowrap;
+}
+header input,header select {
+  background:#000a;
+  border:1px solid #555;
+  color:var(--fg);
+  padding:8px 10px;
+  border-radius:6px;
+  min-width:0;
+}
+header input {
+  margin-left:auto;
+  width:min(180px,34%);
+}
+header select { max-width:34%; }
+.hero {
+  min-height:56vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  gap:12px;
+  padding:60px 4% 36px;
+  background:
+    linear-gradient(0deg,var(--bg),#0000 60%),
+    linear-gradient(120deg,#5b0a1a,#1b2a5e 70%);
+}
+.hero h1 { margin:0; font-size:clamp(30px,8vw,56px); }
+.hero p { margin:0; max-width:520px; color:#ddd; }
+button {
+  border:0;
+  border-radius:6px;
+  padding:10px 20px;
+  font-weight:700;
+  font-size:15px;
+  cursor:pointer;
+}
+.play { background:#fff; color:#000; }
+.play:disabled { opacity:.5; cursor:not-allowed; }
+h2 { font-size:18px; margin:22px 4% 8px; }
+.row {
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding:0 4% 8px;
+  scroll-snap-type:x proximity;
+}
+.card {
+  position:relative;
+  overflow:hidden;
+  flex:0 0 130px;
+  aspect-ratio:2/3;
+  border-radius:6px;
+  cursor:pointer;
+  scroll-snap-align:start;
+  background:#333;
+}
+.card img {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.card .cap {
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  padding:22px 8px 8px;
+  font-weight:700;
+  font-size:13px;
+  overflow-wrap:anywhere;
+  background:linear-gradient(#0000,#000c);
+}
+.note { margin:24px 4%; color:var(--mut); }
+.note.error { color:#ff9292; }
+.ad {
+  margin:16px 4%;
+  min-height:70px;
+  border:1px dashed #666;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:2px;
+  color:var(--mut);
+  font-size:13px;
+  background:#ffffff0d;
+  text-align:center;
+  padding:8px;
+}
+.ad b { font-size:10px; letter-spacing:2px; color:#777; }
+
+/* Wadah banner: tidak memaksa ukuran iklan berubah */
+.ad-slot {
+  min-height:0;
+  padding:8px 0;
+  border:0;
+  background:transparent;
+  overflow:hidden;
+}
+.ad-slot iframe {
+  max-width:100%;
+}
+
+/* Dua banner 320x50 di atas video */
+.video-ad-banners {
+  width:100%;
+  overflow:hidden;
+  text-align:center;
+  background:#222;
+}
+.video-ad-unit {
+  width:100%;
+  max-width:320px;
+  min-height:50px;
+  margin:0 auto 6px;
+  overflow:hidden;
+}
+.video-ad-unit:last-child {
+  margin-bottom:0;
+}
+.video-ad-unit iframe {
+  max-width:100%;
+}
+
+.modal {
+  position:fixed;
+  inset:0;
+  background:#000d;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:10;
+  padding:16px;
+}
+.modal.on { display:flex; }
+.box {
+  background:var(--card);
+  border-radius:10px;
+  width:min(640px,100%);
+  max-height:100%;
+  overflow-y:auto;
+}
+video {
+  display:block;
+  width:100%;
+  aspect-ratio:16/9;
+  background:#000;
+}
+.txt { padding:16px; }
+.txt h3 { margin:0 0 4px; }
+.txt small { color:var(--mut); }
+.txt p { margin:10px 0 14px; color:#ccc; }
+.x { background:#444; color:#fff; }
+.box .ad { margin:0; border-radius:0; border-width:0 0 1px; }
+footer { padding:28px 4%; color:var(--mut); font-size:12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">NONTONYUK</span>
+  <input id="q" aria-label="Cari judul" placeholder="Cari judul…">
+  <select id="lg" aria-label="Bahasa">
+    <option value="id">Indonesia</option>
+    <option value="en">English</option>
+    <option value="es">Español</option>
+  </select>
+</header>
+
+<section class="hero">
+
+  <!-- BANNER 1: 300 x 250 -->
+  <div class="ad ad-slot" style="margin:0 0 8px">
+    <script>
+      atOptions = {
+        'key' : 'c2265d198ca9e518e04d2ffa1db633ec',
+        'format' : 'iframe',
+        'height' : 250,
+        'width' : 300,
+        'params' : {}
+      };
+    </script>
+    <script src="https://www.highrevenueformat.com/c2265d198ca9e518e04d2ffa1db633ec/invoke.js"></script>
+  </div>
+
+  <h1 data-i="hero_t"></h1>
+  <p data-i="hero_p"></p>
+  <div><button class="play" id="hp" data-i="play" disabled></button></div>
+</section>
+
+<!-- BANNER 2: 320 x 50 -->
+<div class="ad ad-slot">
+  <script>
+    atOptions = {
+      'key' : '9a02da55e20a4e72835283690d3dcb99',
+      'format' : 'iframe',
+      'height' : 50,
+      'width' : 320,
+      'params' : {}
+    };
+  </script>
+  <script src="https://www.highrevenueformat.com/9a02da55e20a4e72835283690d3dcb99/invoke.js"></script>
+</div>
+
+<main id="rows" aria-live="polite"></main>
+
+<!-- BANNER 3: 320 x 50 -->
+<div class="ad ad-slot">
+  <script>
+    atOptions = {
+      'key' : '9a02da55e20a4e72835283690d3dcb99',
+      'format' : 'iframe',
+      'height' : 50,
+      'width' : 320,
+      'params' : {}
+    };
+  </script>
+  <script src="https://www.highrevenueformat.com/9a02da55e20a4e72835283690d3dcb99/invoke.js"></script>
+</div>
+
+<footer data-i="foot"></footer>
+
+<div class="modal" id="m" role="dialog" aria-modal="true">
+  <div class="box">
+
+    <!-- DUA BANNER 320 x 50, TERSUSUN VERTIKAL DI ATAS VIDEO -->
+    <div class="video-ad-banners">
+
+      <!-- BANNER VIDEO 1: 320 x 50 -->
+      <div class="video-ad-unit">
+        <script>
+          atOptions = {
+            'key' : '9a02da55e20a4e72835283690d3dcb99',
+            'format' : 'iframe',
+            'height' : 50,
+            'width' : 320,
+            'params' : {}
+          };
+        </script>
+        <script src="https://www.highrevenueformat.com/9a02da55e20a4e72835283690d3dcb99/invoke.js"></script>
+      </div>
+
+      <!-- BANNER VIDEO 2: 320 x 50 -->
+      <div class="video-ad-unit">
+        <script>
+          atOptions = {
+            'key' : '9a02da55e20a4e72835283690d3dcb99',
+            'format' : 'iframe',
+            'height' : 50,
+            'width' : 320,
+            'params' : {}
+          };
+        </script>
+        <script src="https://www.highrevenueformat.com/9a02da55e20a4e72835283690d3dcb99/invoke.js"></script>
+      </div>
+
+    </div>
+
+    <video id="v" controls playsinline preload="metadata"></video>
+
+    <div class="txt">
+      <h3 id="mt"></h3>
+      <small id="mm"></small>
+      <p id="ms"></p>
+      <p id="videoError" class="note error" hidden></p>
+      <button class="x" id="mc" data-i="close"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// API Cloudflare Worker untuk daftar film dan file media.
+var API = "https://nontonyuk-admin.filmpendek.workers.dev";
+var FILMS_API = API + "/api/films";
+
+var D = {
+  id: {
+    search:"Cari judul…",
+    hero_t:"Film tayang hari ini",
+    hero_p:"Temukan film favoritmu di NontonYuk",
+    play:"▶ Putar",
+    ad:"IKLAN",
+    ad_top:"Spanduk di atas judul (970×90)",
+    ad_mid:"Spanduk beranda atas (970×90)",
+    ad_bot:"Spanduk beranda bawah (970×90)",
+    ad_modal:"Banner di atas video (728×90)",
+    close:"Tutup",
+    syn:"Belum ada sinopsis.",
+    foot:"© NontonYuk",
+    none:"Tidak ada hasil pencarian.",
+    latest:"Terbaru",
+    loading:"Memuat daftar film…",
+    empty:"Belum ada film yang tersedia.",
+    err:"Gagal memuat daftar film. Periksa koneksi dan coba muat ulang.",
+    videoErr:"Video gagal dimuat. Periksa URL video atau akses file."
+  },
+  en: {
+    search:"Search titles…",
+    hero_t:"Movies showing today",
+    hero_p:"Discover movies on NontonYuk",
+    play:"▶ Play",
+    ad:"AD",
+    ad_top:"Banner above title (970×90)",
+    ad_mid:"Homepage top banner (970×90)",
+    ad_bot:"Homepage bottom banner (970×90)",
+    ad_modal:"Banner above video (728×90)",
+    close:"Close",
+    syn:"No synopsis yet.",
+    foot:"© NontonYuk",
+    none:"No search results.",
+    latest:"Latest",
+    loading:"Loading movies…",
+    empty:"No movies available yet.",
+    err:"Could not load the movie list. Check your connection and reload.",
+    videoErr:"Video failed to load. Check the video URL or file access."
+  },
+  es: {
+    search:"Buscar títulos…",
+    hero_t:"Películas de hoy",
+    hero_p:"Descubre películas en NontonYuk",
+    play:"▶ Reproducir",
+    ad:"ANUNCIO",
+    ad_top:"Banner sobre el título",
+    ad_mid:"Banner superior",
+    ad_bot:"Banner inferior",
+    ad_modal:"Banner sobre el video",
+    close:"Cerrar",
+    syn:"Aún no hay sinopsis.",
+    foot:"© NontonYuk",
+    none:"No hay resultados.",
+    latest:"Recientes",
+    loading:"Cargando películas…",
+    empty:"Todavía no hay películas.",
+    err:"No se pudo cargar la lista. Comprueba tu conexión.",
+    videoErr:"No se pudo cargar el video. Comprueba su URL."
+  }
+};
+
+var G = [
+  "#8e2de2,#4a00e0",
+  "#f12711,#f5af19",
+  "#134e5e,#71b280",
+  "#232526,#414345",
+  "#c31432,#240b36",
+  "#0f2027,#2c5364",
+  "#ff512f,#dd2476",
+  "#1d976c,#93f9b9"
+];
+
+var lang = "id";
+var films = [];
+var state = "loading";
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+function t(key) {
+  return (D[lang] && D[lang][key]) || D.id[key] || key;
+}
+
+function el(tag, cls, txt) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (txt != null) e.textContent = txt;
+  return e;
+}
+
+function mediaUrl(value) {
+  if (!value || typeof value !== "string") return "";
+
+  value = value.trim();
+
+  if (/^https?:\/\//i.test(value)) return value;
+
+  if (value.indexOf("//") === 0) {
+    return window.location.protocol + value;
+  }
+
+  value = value.replace(/^\/+/, "");
+  value = value.replace(/^media\//i, "");
+
+  return API + "/media/" +
+    value.split("/").map(function(part) {
+      return encodeURIComponent(decodeURIComponentSafe(part));
+    }).join("/");
+}
+
+function decodeURIComponentSafe(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch (e) {
+    return value;
+  }
+}
+
+function getTitle(f) {
+  return String(f.title || f.name || "Film tanpa judul");
+}
+
+function getGenre(f) {
+  return String(f.genre || f.category || "");
+}
+
+function card(f, i) {
+  var c = el("div", "card");
+  c.tabIndex = 0;
+  c.setAttribute("role", "button");
+  c.setAttribute("aria-label", "Putar " + getTitle(f));
+
+  var poster = mediaUrl(f.poster || f.posterUrl || "");
+
+  if (poster) {
+    var im = el("img");
+    im.loading = "lazy";
+    im.alt = getTitle(f);
+    im.src = poster;
+    im.onerror = function() {
+      im.remove();
+      c.style.background =
+        "linear-gradient(160deg," + G[i % G.length] + ")";
+    };
+    c.appendChild(im);
+  } else {
+    c.style.background =
+      "linear-gradient(160deg," + G[i % G.length] + ")";
+  }
+
+  c.appendChild(el("div", "cap", getTitle(f)));
+
+  c.onclick = function() {
+    openM(f);
+  };
+
+  c.onkeydown = function(e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openM(f);
+    }
+  };
+
+  return c;
+}
+
+function addRow(box, title, items) {
+  if (!items.length) return;
+
+  box.appendChild(el("h2", null, title));
+
+  var row = el("div", "row");
+
+  items.forEach(function(f, i) {
+    row.appendChild(card(f, i));
+  });
+
+  box.appendChild(row);
+}
+
+function render() {
+  var box = $("rows");
+  box.textContent = "";
+
+  if (state === "loading") {
+    box.appendChild(el("p", "note", t("loading")));
+    return;
+  }
+
+  if (state === "err") {
+    box.appendChild(el("p", "note error", t("err")));
+    return;
+  }
+
+  if (!films.length) {
+    box.appendChild(el("p", "note", t("empty")));
+    return;
+  }
+
+  var query = $("q").value.trim().toLowerCase();
+
+  var list = films.filter(function(f) {
+    return getTitle(f).toLowerCase().indexOf(query) !== -1;
+  });
+
+  if (!list.length) {
+    box.appendChild(el("p", "note", t("none")));
+    return;
+  }
+
+  addRow(box, t("latest"), list);
+
+  var order = [];
+  var map = {};
+
+  list.forEach(function(f) {
+    getGenre(f).split(/[,/]/).forEach(function(g) {
+      g = g.trim();
+      if (!g) return;
+
+      var key = g.toLowerCase();
+
+      if (!map[key]) {
+        map[key] = { name:g, items:[] };
+        order.push(key);
+      }
+
+      map[key].items.push(f);
+    });
+  });
+
+  order.forEach(function(key) {
+    addRow(box, map[key].name, map[key].items);
+  });
+}
+
+function apply() {
+  document.documentElement.lang = lang;
+
+  document.querySelectorAll("[data-i]").forEach(function(e) {
+    e.textContent = t(e.getAttribute("data-i"));
+  });
+
+  $("q").placeholder = t("search");
+  render();
+}
+
+function openM(f) {
+  var video = $("v");
+  var src = mediaUrl(f.video || f.videoUrl || f.url || "");
+  var poster = mediaUrl(f.poster || f.posterUrl || "");
+
+  $("mt").textContent = getTitle(f);
+  $("mm").textContent = [
+    f.year || "",
+    getGenre(f)
+  ].filter(Boolean).join(" · ");
+
+  $("ms").textContent = f.synopsis || t("syn");
+  $("videoError").hidden = true;
+  $("videoError").textContent = "";
+
+  video.pause();
+  video.removeAttribute("src");
+  video.removeAttribute("poster");
+
+  if (poster) video.poster = poster;
+
+  if (src) {
+    video.src = src;
+    video.load();
+  } else {
+    $("videoError").textContent = t("videoErr");
+    $("videoError").hidden = false;
+  }
+
+  $("m").classList.add("on");
+}
+
+function closeM() {
+  var video = $("v");
+
+  video.pause();
+  video.removeAttribute("src");
+  video.removeAttribute("poster");
+  video.load();
+
+  $("m").classList.remove("on");
+}
+
+$("v").addEventListener("error", function() {
+  if ($("m").classList.contains("on")) {
+    $("videoError").textContent = t("videoErr");
+    $("videoError").hidden = false;
+  }
+});
+
+$("mc").onclick = closeM;
+
+$("m").addEventListener("click", function(e) {
+  if (e.target === this) closeM();
+});
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") closeM();
+});
+
+$("hp").onclick = function() {
+  if (films.length) openM(films[0]);
+};
+
+$("q").addEventListener("input", render);
+
+$("lg").addEventListener("change", function(e) {
+  lang = e.target.value;
+
+  try {
+    localStorage.setItem("lang", lang);
+  } catch (err) {}
+
+  apply();
+});
+
+try {
+  var savedLang = localStorage.getItem("lang");
+  if (savedLang && D[savedLang]) {
+    lang = savedLang;
+    $("lg").value = savedLang;
+  }
+} catch (err) {}
+
+apply();
+
+async function loadFilms() {
+  state = "loading";
+  render();
+
+  try {
+    var response = await fetch(FILMS_API, {
+      method: "GET",
+      cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+
+    if (!response.ok) {
+      throw new Error("API HTTP " + response.status);
+    }
+
+    var data = await response.json();
+
+    if (Array.isArray(data)) {
+      films = data;
+    } else if (data && Array.isArray(data.films)) {
+      films = data.films;
+    } else {
+      throw new Error("Format data film tidak sesuai");
+    }
+
+    films = films.filter(function(f) {
+      return f && typeof f === "object" &&
+        (f.title || f.name);
+    });
+
+    state = "ok";
+    $("hp").disabled = !films.length;
+    render();
+
+  } catch (err) {
+    console.error("Gagal memuat daftar film:", err);
+    films = [];
+    state = "err";
+    $("hp").disabled = true;
+    render();
+  }
+}
+
+loadFilms();
+</script>
+
+<!-- Script iklan lama dipertahankan -->
+<script src="https://pl32073841.profitableratecpmnetwork.com/a6/bf/50/a6bf5025601fc36ad67566786547144d.js"></script>
+
+</body>
+</html>
